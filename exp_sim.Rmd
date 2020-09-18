@@ -1,0 +1,158 @@
+---
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Simulating the Exponential Distribution to Illustrate the Central Limit Theorem (CLT)
+
+*Author: Megan Alpine*
+
+*September 2020*
+
+## Overview
+
+This report uses the example of the exponential distribution, a non-normal distribution, to illustrate the Central Limit Theorem (CLT). The CLT claims that "the distribution of averages of iid random variables becomes that of a standard normal as the sample size increases" - even if the distribution of the raw data is not normal (Caffo 2015). We see that when the averages of 1000 simulations of 40 random exponential variables are plotted, their distribution approximates a standard normal distribution.
+
+## Simulations
+
+For this exercise we will generate random samples of data that are exponentially distributed with n=40 and a rate (lambda) of 0.2. In R, this is done using `rexp(40, 0.2)`. For comparison, we'll do this again with n=1000 to show what the exponential distribution looks like as n approaches infinity. See Figure 1 below; see Appendix for R code.
+
+```{r expdist, echo=FALSE, warning=FALSE}
+library(ggplot2)
+library(gridExtra)
+set.seed(217)
+p1 <- qplot(rexp(40,0.2), ylab="Frequency", binwidth=1)
+p2 <- qplot(rexp(1000,0.2), ylab="Frequency", binwidth=1)
+grid.arrange(p1,p2,ncol=2,top="Figure 1: Exponential Distribution for n=40 and n=1000")
+```
+
+Figure 1 shows us what an exponential distribution looks like: a few very high numbers, and then lots of smaller numbers. It's definitely not "normal."
+
+The CLT says that if we take the AVERAGE (mean) of a bunch of samples, the distribution of those AVERAGES will become more and more like a standard normal distribution. So let's do that by simulating what we did above (`rexp(40,0.2)`) many more times - 1000 times! Then, we'll take the average of each random sample and plot those 1000 averages. See Figure 2 below; see Appendix for R code. 
+
+```{r expavgdist, echo=FALSE, warning=FALSE}
+set.seed(217)
+avgexp = NULL
+for (i in 1 : 1000) avgexp = c(avgexp, mean(rexp(40, rate=0.2)))
+ggplot(data.frame(avgexp),aes(x=avgexp))+
+  geom_histogram(aes(y=..density..),
+                binwidth=0.25,
+                fill="turquoise") + 
+        ylim(c(0,0.6))+
+        stat_function(fun=dnorm,args=list(mean=5,sd=sd(avgexp))) + 
+        xlab("Averages of the distribution") + 
+        ylab("Density")+
+        geom_text(aes(x=7.5,y=0.3, label="(Line = Theoretical Normal Distribution)"),
+                color="black", 
+                text=element_text(size=10)) +
+        ggtitle("Figure 2: Distribution of averages of 1000 random exponential samples (n=40)")
+```
+
+Nice! That distribution is looking quite... normal.
+
+## Sample Mean vs Theoretical Mean
+
+The theoretical mean for an exponential distribution is 1/lambda. Since our lambda is set at 0.2, that means our theoretical mean is 1/0.2, or 5. 
+
+```{r theormean}
+1/0.2
+```
+
+The sample mean, in our case, is the mean of all our means! The Queen Mean?
+
+```{r sampmean}
+mean(avgexp)
+```
+
+Anyway, it works out to `r mean(avgexp)`. This is very close to the theoretical mean of 5. 
+
+## Sample Variance vs Theoretical Variance
+
+The theoretical standard deviation for the exponential distribution, like the mean, is 1/lambda. To convert from standard deviation to variance, we'll need to square this number and then divide by n, which is 40.
+
+```{r theorvar}
+((1/0.2)^2)/40
+```
+
+Our sample variance follows the same formula: variance divided by n. Fortunately, R does this for us!
+
+```{r sampvar}
+var(avgexp)
+```
+
+We can see that the theoretical variance, `r ((1/0.2)^2)/40`, is quite close to the sample variance, `r var(avgexp)`.  
+
+## Distribution & Conclusions
+
+From Figure 2 above we can see that when we simulate 1000 random samples of exponentially distributed data, the averages of those samples approximate a standard normal distribution. 
+
+The similarity of the theoretical mean to the sample mean, and of the theoretical variance to the sample variance, further support this conclusion.
+
+Let's compare one of the plots from Figure 1 to a simplified version of Figure 2 to illustrate that the distribution of AVERAGES of 100 samples (n=40) of exponentially distributed data is normally distributed, while the distribution of an equivalently large sample (n=40000) of exponentially distributed data is not. See Figure 3 below; see Appendix for R code. 
+
+``` {r expvsnorm, echo=FALSE, warning=FALSE}
+set.seed(217)
+pexp <- qplot(rexp(40000,0.2), ylab="Frequency", binwidth=1)
+avgexp = NULL
+for (i in 1 : 1000) avgexp = c(avgexp, mean(rexp(40, rate=0.2)))
+pnor <- qplot(avgexp, ylab="Frequency", binwidth=0.25)
+grid.arrange(pexp,pnor,ncol=2,top="Figure 3: Distributions of Raw Data vs 1000 Simulations of Averages of Samples")
+```
+
+To conclude: we can see that while the raw data are **exponentially distributed**, the AVERAGES of many random samples of this raw data are **normally distributed**. So, the data in this example behave as predicted by the Central Limit Theorem. 
+
+## Appendix
+
+Figure 1: R code
+
+```{r expdist2, eval=FALSE}
+# Load libraries
+library(ggplot2)
+library(gridExtra)
+# Set seed for reproducibility
+set.seed(217)
+# Plot random exponential data with n=40 and n=1000
+p1 <- qplot(rexp(40,0.2), ylab="Frequency", binwidth=1)
+p2 <- qplot(rexp(1000,0.2), ylab="Frequency", binwidth=1)
+grid.arrange(p1,p2,ncol=2,top="Figure 1: Exponential Distribution for n=40 and n=1000")
+```
+
+Figure 2: R code
+
+```{r expavgdist2, eval=FALSE}
+set.seed(217)
+# Conduct bootstrap sampling by taking the mean of 40 random 
+# samples of exponential data 1000 times
+avgexp = NULL
+for (i in 1 : 1000) avgexp = c(avgexp, mean(rexp(40, rate=0.2)))
+# Plot bootstrapped data in histogram, with theoretical normal 
+# distribution overlayed
+ggplot(data.frame(avgexp),aes(x=avgexp))+
+  geom_histogram(aes(y=..density..),
+                binwidth=0.25,
+                fill="turquoise") + 
+        ylim(c(0,0.6))+
+        stat_function(fun=dnorm,args=list(mean=5,sd=sd(avgexp))) + 
+        xlab("Averages of the distribution") + 
+        ylab("Density")+
+        geom_text(aes(x=7.5,y=0.3, label="(Line = Theoretical Normal Distribution)"),
+                color="black", 
+                text=element_text(size=10)) +
+        ggtitle("Figure 2: Distribution of averages of 1000 random exponential samples (n=40)")
+```
+
+Figure 3: R code
+
+``` {r expvsnorm2, eval=FALSE}
+set.seed(217)
+# Plot randomly generated, exponential distributed data (n=40000)
+pexp <- qplot(rexp(40000,0.2), ylab="Frequency", binwidth=1)
+avgexp = NULL
+for (i in 1 : 1000) avgexp = c(avgexp, mean(rexp(40, rate=0.2)))
+# Plot bootstrap data using sample sizes of n=40 (n=1000)
+pnor <- qplot(avgexp, ylab="Frequency", binwidth=0.25)
+grid.arrange(pexp,pnor,ncol=2,top="Figure 3: Distributions of Raw Data vs 1000 Simulations of Averages of Samples")
+```
