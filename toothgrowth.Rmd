@@ -1,0 +1,175 @@
+---
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Analyzing the Impact of Vitamin C Type and Dosage on Tooth Growth in Guinea Pigs
+
+*Author: Megan Alpine*
+
+*September 2020*
+
+## Overview
+
+This report analyzes data on tooth growth in Guinea pigs (n=60) who were treated with different kinds and dosages of Vitamin C. These data are drawn from a [1952 experiment conducted by C.I. Bliss](https://krishikosh.egranth.ac.in/bitstream/1/22993/1/IVRI%20OB%202003.pdf). Guinea pigs in this experiment were given two types of Vitamin C, orange juice and ascorbic acid, at 3 dosages: 0.5, 1.0, and 2.0 mg/day. This report tests 2 hypotheses:
+
+H1: Type of Vitamin C affects tooth growth.
+
+H2: Dosage of Vitamin C affects tooth growth.
+
+## Summary of Data
+
+First, we'll explore the tooth growth data, publicly available in the R `datasets` package, using boxplots to compare summary data for each of the 6 sub-groups of treatments. Vitamin C supplement types are coded as "OJ" (orange juice) and "VC" (ascorbic acid).
+
+```{r boxplots, echo=FALSE, warning=FALSE}
+library(ggplot2)
+library(datasets)
+data("ToothGrowth")
+t <- ToothGrowth
+t$df <- as.factor(t$dose)
+g <- ggplot(t, aes(df, len))
+g + geom_boxplot() + 
+        facet_grid(.~ supp) +
+       stat_summary(fun.y=mean, geom="point", shape=24, color="red") +
+        labs(title="Figure 1: Tooth Growth by Supplement Type and Dosage",
+             x="Dose (mg)", 
+             y = "Length")
+```
+
+We can see from this boxplot that the means of each subgroup, indicated by the red triangles, differ significantly from each other. In the sections that follow, we test the stastical significance of these apparent differences using permutation tests. Permutation tests are well-suited for analyzing differences among sub-groups in your data (ie, multivariate data). 
+
+## Assumptions
+
+This analysis relies on the following assumptions:
+
+1. The variables are independent and identically distributed (iid).
+2. The data are NOT paired; each guinea pig was given only one supplement type at one dosage.
+3. We will assume the distribution of each sub-group of data is normal.
+3. We will set the Type I error rate for statistical analyses at alpha = 0.05. 
+
+## Analysis
+
+The analysis tests two hypotheses:
+
+H1: Type of Vitamin C affects tooth growth.
+
+H2: Dosage of Vitamin C affects tooth growth.
+
+These hypotheses will be tested against null hypotheses using permutation tests comparing means of sub-groups. 
+
+### Do OJ and VC differently impact tooth growth?
+
+More formally, H1 can be stated as "type of Vitamin C is related to the outcome (length)" and the null hypothesis, H0, as "type of Vitamin C is NOT related to the outcome."
+
+To test these hypotheses, we compare the observed data against a permuted version of the data in which group assignments are rearranged randomly (using `sample` in R); permutations are simulated 10000 times to more accurately capture the true value of the null hypothesis. 
+
+```{r ojvsvc, echo=FALSE, warning=FALSE}
+set.seed(1)
+y1 <- t$len
+group1 <- as.character(t$supp)
+testStat1 <- function(w1, g1) mean(w1[g1 == "OJ"]) - mean(w1[g1 == "VC"])
+observedStat1 <- testStat1(y1, group1)
+permutations1 <- sapply(1 : 10000, function(i) testStat1(y1, sample(group1)))
+```
+A comparison of means using a permutation test gives an observed statistic of `r observedStat1`. This indicates that the mean tooth growth length for guinea pigs in the OJ group was `r observedStat1` higher than for the VC group.
+
+Further, we see that the proportion of permutations (n=10000) with value greater than the observed statistic is `r mean(permutations1 > observedStat1)`. This means that we reject the null hypothesis at the alpha = 0.05 level in favor of H1. 
+
+### Do different doses differently impact tooth growth?
+
+H2 can be stated formally as "dose of Vitamin C is related to the outcome (length)" and the null hypothesis, H0, as "dose of Vitamin C is NOT related to the outcome."
+
+We will use the same means comparison method used above to compare the subgroup of guinea pigs given 0.5 mg doses to those given 1.0 mg doses, and again to compare those given 1.0 mg doses to those given 2.0 mg doses. With these two statistics, it is not necessary to compare guinea pigs given 0.5 mg doses to those given 2.0 mg doses.
+
+```{r halfvsone, echo=FALSE, warning=FALSE}
+set.seed(2)
+subdata1 <- t[t$dose %in% c(0.5, 1.0),]
+y2 <- subdata1$len
+group2 <- as.character(subdata1$dose)
+testStat2 <- function(w2, g2) mean(w2[g2 == "1"]) - mean(w2[g2 == "0.5"])
+observedStat2 <- testStat2(y2, group2)
+permutations2 <- sapply(1 : 10000, function(i) testStat2(y2, sample(group2)))
+```
+```{r onevstwo, echo=FALSE, warning=FALSE}
+set.seed(3)
+subdata2 <- t[t$dose %in% c(1.0, 2.0),]
+y3 <- subdata2$len
+group3 <- as.character(subdata2$dose)
+testStat3 <- function(w3, g3) mean(w3[g3 == "2"]) - mean(w3[g3 == "1"])
+observedStat3 <- testStat3(y3, group3)
+permutations3 <- sapply(1 : 10000, function(i) testStat3(y3, sample(group3)))
+```
+
+A comparison of means using permutation tests gives observed statistics of `r observedStat2` and `r observedStat3`. These indicate, respectively, that the mean tooth growth length for the 1.0 mg dose group was `r observedStat2` higher than for the 0.5 mg group, and the mean tooth growth length for the 2.0 mg dose group was `r observedStat3` higher than for the 1.0 mg group.
+
+Further, we see that the proportions of permutations (n=10000) with a value greater than the observed statistic are `r mean(permutations2 > observedStat2)` and `r mean(permutations3 > observedStat3)`. With these p values near 0 for both tests, we will reject the null hypothesis at the alpha = 0.05 level in favor of H2. 
+
+## Conclusions
+
+Comparing subgroup means using permutation tests allows us to make the following conclusions:
+
+1. Type of Vitamin C affects tooth growth (H1 supported)
+2. Dosage of Vitamin C affects tooth growth (H2 supported)
+
+These conclusions assume the 4 assumptions spelled out in the "assumptions" section above. Further analysis could shed light on more differences among the subgroups, including: How does the OJ group compare to the VC group at the 2.0 mg level? How does the 2.0 mg group compare to the 1.0 mg group among guinea pigs who only took the OJ supplement? Specific combinations of supplement type and dose may prove to have significant implications for guinea pig tooth growth.
+
+## Appendix
+
+Figure 1: R code
+
+```{r boxplots2, eval=FALSE}
+# Load libraries & data
+library(ggplot2)
+library(datasets)
+data("ToothGrowth")
+t <- ToothGrowth
+t$df <- as.factor(t$dose)
+# Plot data as a boxplot, sub-grouped by supplement type
+g <- ggplot(t, aes(df, len))
+g + geom_boxplot() + 
+        facet_grid(.~ supp) +
+       stat_summary(fun.y=mean, geom="point", shape=24, color="red") +
+        labs(title="Figure 1: Tooth Growth by Supplement Type and Dosage",
+             x="Dose (mg)", 
+             y = "Length")
+```
+
+Permutation test 1: OJ vs VC R code
+
+```{r ojvsvc2, eval=FALSE}
+# Set seed for reproducibility
+set.seed(1)
+y1 <- t$len
+group1 <- as.character(t$supp)
+# Write a function that takes the difference of the subgroup means
+testStat1 <- function(w1, g1) mean(w1[g1 == "OJ"]) - mean(w1[g1 == "VC"])
+observedStat1 <- testStat1(y1, group1)
+# Run 10000 simulations of a randomly permuted version of the data
+permutations1 <- sapply(1 : 10000, function(i) testStat1(y1, sample(group1)))
+```
+
+Permutation test 2: 0.5mg vs 1.0mg R code
+
+```{r halfvsone2, eval=FALSE}
+set.seed(2)
+subdata1 <- t[t$dose %in% c(0.5, 1.0),]
+y2 <- subdata1$len
+group2 <- as.character(subdata1$dose)
+testStat2 <- function(w2, g2) mean(w2[g2 == "1"]) - mean(w2[g2 == "0.5"])
+observedStat2 <- testStat2(y2, group2)
+permutations2 <- sapply(1 : 10000, function(i) testStat2(y2, sample(group2)))
+```
+
+Permutation test 3: 1.0mg vs 2.0mg R code
+
+```{r onevstwo2, eval=FALSE}
+set.seed(3)
+subdata2 <- t[t$dose %in% c(1.0, 2.0),]
+y3 <- subdata2$len
+group3 <- as.character(subdata2$dose)
+testStat3 <- function(w3, g3) mean(w3[g3 == "2"]) - mean(w3[g3 == "1"])
+observedStat3 <- testStat3(y3, group3)
+permutations3 <- sapply(1 : 10000, function(i) testStat3(y3, sample(group3)))
+```
